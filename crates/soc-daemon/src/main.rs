@@ -1,6 +1,9 @@
+mod bpf_loader;
+
+use bpf_loader::{BpfEngine, KernelEvent};
 use clap::Parser;
 use std::path::PathBuf;
-use tracing::{info, warn};
+use tracing::info;
 
 #[derive(Parser, Debug)]
 #[command(name = "soc-daemon", about = "DirtySOCS Kernel-Observability & AI-Assisted SOC Analyst Daemon")]
@@ -8,7 +11,7 @@ pub struct CliArgs {
     #[arg(short, long, default_value = "/tmp/dirtysocs.sock")]
     pub socket_path: PathBuf,
 
-    #[arg(short, long, default_value = "true")]
+    #[arg(long, default_value = "true")]
     pub simulate_kernel_if_unprivileged: bool,
 
     #[arg(long, default_value = "true")]
@@ -40,6 +43,51 @@ async fn main() -> anyhow::Result<()> {
         std::process::exit(0);
     });
 
-    info!("DirtySOCS Core Daemon initialized successfully. Ready for subsystem integration.");
+    // Initialize eBPF Observability Layer
+    let (mut bpf_engine, mut event_rx) = BpfEngine::new();
+    bpf_engine.start(args.simulate_kernel_if_unprivileged).await?;
+
+    info!(
+        "Kernel Observability Engine running (simulated={}). Listening for ring-0 events...",
+        bpf_engine.is_simulated()
+    );
+
+    // Sample event logger task
+    tokio::spawn(async move {
+        while let Ok(event) = event_rx.recv().await {
+            match event {
+                KernelEvent::Exec(e) => {
+                    info!(
+                        "[eBPF execve] PID: {}, Path: '{}', Comm: '{}'",
+                        e.pid,
+                        e.filename_str(),
+                        e.comm_str()
+                    );
+                }
+                KernelEvent::Connect(c) => {
+                    info!(
+                        "[eBPF connect] PID: {}, Comm: '{}', Port: {}",
+                        c.pid,
+                        c.comm_str(),
+                        c.port
+                    );
+                }
+                KernelEvent::Openat(o) => {
+                    info!(
+                        "[eBPF openat] PID: {}, File: '{}'",
+                        o.pid,
+                        o.filename_str()
+                    );
+                }
+            }
+        }
+    });
+
+    // In future phases, D-Bus, journald, pipeline, and IPC servers run here
+    info!("DirtySOCS Phase 2 Verification: Press Ctrl+C to terminate cleanly.");
+    
+    // Keep main alive for demonstration or signal
+    tokio::signal::ctrl_c().await?;
+    info!("Exiting DirtySOCS.");
     Ok(())
 }

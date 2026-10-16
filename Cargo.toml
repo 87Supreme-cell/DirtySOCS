@@ -19,6 +19,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 anyhow = "1.0"
 thiserror = "2.0"
+libc = "0.2"
 chrono = { version = "0.4", default-features = false, features = ["serde", "clock"] }
 bytes = "1.7"
 tokio-util = { version = "0.7", features = ["codec"] }

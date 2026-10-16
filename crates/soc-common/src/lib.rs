@@ -3,9 +3,9 @@
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
-pub const PATH_MAX_LEN: usize = 256;
-pub const COMM_MAX_LEN: usize = 64;
-pub const ARGS_MAX_LEN: usize = 256;
+pub const PATH_MAX_LEN: usize = 128;
+pub const COMM_MAX_LEN: usize = 32;
+pub const ARGS_MAX_LEN: usize = 96;
 
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
