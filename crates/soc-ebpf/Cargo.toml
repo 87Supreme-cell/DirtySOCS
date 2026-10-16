@@ -1,0 +1,13 @@
+[package]
+name = "soc-ebpf"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+aya-ebpf = "0.2.1"
+aya-log-ebpf = "0.2.0"
+soc-common = { path = "../soc-common", default-features = false }
+
+[[bin]]
+name = "soc-ebpf"
+path = "src/main.rs"

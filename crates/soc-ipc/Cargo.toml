@@ -1,0 +1,16 @@
+[package]
+name = "soc-ipc"
+version = "0.1.0"
+edition = "2021"
+authors = ["DirtySOCS Contributors"]
+description = "Framed JSON-RPC IPC protocol and models over Unix Domain Sockets for DirtySOCS"
+
+[dependencies]
+soc-common = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+bytes = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }

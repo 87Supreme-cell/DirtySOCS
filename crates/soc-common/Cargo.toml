@@ -1,0 +1,14 @@
+[package]
+name = "soc-common"
+version = "0.1.0"
+edition = "2021"
+authors = ["DirtySOCS Contributors"]
+description = "Common event types and telemetry models for DirtySOCS eBPF and user-space"
+
+[features]
+default = ["std"]
+std = ["serde/std", "dep:chrono"]
+
+[dependencies]
+serde = { workspace = true, default-features = false }
+chrono = { workspace = true, optional = true }

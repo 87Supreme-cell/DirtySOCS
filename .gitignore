@@ -1,0 +1,24 @@
+# Rust build artifacts
+target/
+**/*.rs.bk
+*.bpf.o
+
+# Flutter build artifacts
+apps/soc_dashboard/build/
+apps/soc_dashboard/.dart_tool/
+apps/soc_dashboard/.flutter-plugins
+apps/soc_dashboard/.flutter-plugins-dependencies
+apps/soc_dashboard/linux/flutter/ephemeral/
+
+# Secrets and environment configs
+.env
+*.pem
+*.key
+*.sock
+
+# IDE / System files
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
