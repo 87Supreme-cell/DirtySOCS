@@ -173,17 +173,17 @@ The AI model is strictly barred from executing dynamic commands on the host. Whe
 ## Screenshots & UI Showcase
 
 <!-- Visual showcase of DirtySOCS Flutter desktop interface -->
-| System Overview & Live Telemetry | Process Tree & Lineage Correlation |
+| Ubuntu Native Dark Mode (75% Orange Risk) | Ubuntu Native Light Porcelain Mode |
 | :---: | :---: |
-| <img src="docs/screenshots/dashboard_overview.png" alt="Dashboard Overview" width="400"/> | <img src="docs/screenshots/process_tree.png" alt="Process Tree" width="400"/> |
+| <img src="docs/screenshots/ubuntu_dashboard_dark.png" alt="Ubuntu Dark Theme" width="400"/> | <img src="docs/screenshots/ubuntu_dashboard_light.png" alt="Ubuntu Light Theme" width="400"/> |
 
-| Air-Gapped AI Dossier & Compliance | Human-in-the-Loop Remediation Modal |
+| Dual-Lens View (Executive vs Technical) | Process Lineage Hierarchy Tree |
 | :---: | :---: |
-| <img src="docs/screenshots/advisory_export.png" alt="AI Advisory Export" width="400"/> | <img src="docs/screenshots/remediation_modal.png" alt="Remediation Confirmation" width="400"/> |
+| <img src="docs/screenshots/ui_concept_dual_view.png" alt="Dual-Lens Incident Explorer" width="400"/> | <img src="docs/screenshots/process_tree.png" alt="Process Tree" width="400"/> |
 
-| UI Concept: Dual-Lens View (Executive vs Technical) | UI Concept: Tactical MITRE ATT&CK Matrix Grid |
+| Tactical MITRE ATT&CK Matrix Grid | Human-in-the-Loop Safe Remediation |
 | :---: | :---: |
-| <img src="docs/screenshots/ui_concept_dual_view.png" alt="Dual-Lens Incident Explorer" width="400"/> | <img src="docs/screenshots/ui_concept_mitre_heatmap.png" alt="MITRE ATT&CK Tactical Matrix" width="400"/> |
+| <img src="docs/screenshots/ui_concept_mitre_heatmap.png" alt="MITRE ATT&CK Matrix" width="400"/> | <img src="docs/screenshots/remediation_modal.png" alt="Remediation Confirmation" width="400"/> |
 
 ---
 
