@@ -1,12 +1,27 @@
 mod bpf_loader;
+mod corpus;
+mod export;
+mod heuristics;
+mod pipeline;
+mod proc_metrics;
+mod remediation;
 
-use bpf_loader::{BpfEngine, KernelEvent};
+use bpf_loader::BpfEngine;
 use clap::Parser;
+use export::DossierExporter;
+use heuristics::HeuristicsGate;
+use pipeline::{PiiScrubber, SlidingWindowAggregator};
+use proc_metrics::ProcMetricsCollector;
 use std::path::PathBuf;
-use tracing::info;
+use std::sync::Arc;
+use std::time::Duration;
+use tracing::{info, warn};
 
 #[derive(Parser, Debug)]
-#[command(name = "soc-daemon", about = "DirtySOCS Kernel-Observability & AI-Assisted SOC Analyst Daemon")]
+#[command(
+    name = "soc-daemon",
+    about = "DirtySOCS Kernel-Observability & AI-Assisted SOC Analyst Daemon"
+)]
 pub struct CliArgs {
     #[arg(short, long, default_value = "/tmp/dirtysocs.sock")]
     pub socket_path: PathBuf,
@@ -16,6 +31,9 @@ pub struct CliArgs {
 
     #[arg(long, default_value = "true")]
     pub mock_ai: bool,
+
+    #[arg(long, default_value = "output/dossiers")]
+    pub dossier_output_dir: PathBuf,
 }
 
 #[tokio::main]
@@ -28,13 +46,19 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let args = CliArgs::parse();
-    info!("Initializing DirtySOCS Ring-3 Endpoint Daemon v0.1.0");
+    info!("=======================================================");
+    info!("  DirtySOCS: Hybrid Kernel-Observability & AI SOC Daemon");
+    info!("  License: MIT | Compliance: CIS RHEL 9 & NIST SP 800-53");
+    info!("=======================================================");
     info!("Target Unix Domain Socket: {:?}", args.socket_path);
+    info!("Dossier Export Directory: {:?}", args.dossier_output_dir);
 
     // Lifecycle clean teardown hook
     let sock_path_clone = args.socket_path.clone();
     tokio::spawn(async move {
-        tokio::signal::ctrl_c().await.expect("Failed to listen for Ctrl+C");
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Failed to listen for Ctrl+C");
         info!("Received shutdown signal. Performing clean teardown...");
         if sock_path_clone.exists() {
             let _ = std::fs::remove_file(&sock_path_clone);
@@ -43,7 +67,13 @@ async fn main() -> anyhow::Result<()> {
         std::process::exit(0);
     });
 
-    // Initialize eBPF Observability Layer
+    // 1. Initialize Pipeline & Knowledge Corpus
+    let _scrubber = Arc::new(PiiScrubber::new());
+    let aggregator = Arc::new(SlidingWindowAggregator::new(Duration::from_secs(60)));
+    let heuristics = Arc::new(HeuristicsGate::new(aggregator.clone()));
+    let exporter = Arc::new(DossierExporter::new());
+
+    // 2. Initialize eBPF Observability Layer
     let (mut bpf_engine, mut event_rx) = BpfEngine::new();
     bpf_engine.start(args.simulate_kernel_if_unprivileged).await?;
 
@@ -52,42 +82,56 @@ async fn main() -> anyhow::Result<()> {
         bpf_engine.is_simulated()
     );
 
-    // Sample event logger task
+    // 3. Telemetry Processing & Anomaly Gate Worker
+    let dossier_dir = args.dossier_output_dir.clone();
+    let exporter_clone = exporter.clone();
+    let aggregator_clone = aggregator.clone();
+    let heuristics_clone = heuristics.clone();
+
     tokio::spawn(async move {
         while let Ok(event) = event_rx.recv().await {
-            match event {
-                KernelEvent::Exec(e) => {
-                    info!(
-                        "[eBPF execve] PID: {}, Path: '{}', Comm: '{}'",
-                        e.pid,
-                        e.filename_str(),
-                        e.comm_str()
-                    );
-                }
-                KernelEvent::Connect(c) => {
-                    info!(
-                        "[eBPF connect] PID: {}, Comm: '{}', Port: {}",
-                        c.pid,
-                        c.comm_str(),
-                        c.port
-                    );
-                }
-                KernelEvent::Openat(o) => {
-                    info!(
-                        "[eBPF openat] PID: {}, File: '{}'",
-                        o.pid,
-                        o.filename_str()
-                    );
+            if let Some(trigger) = heuristics_clone.evaluate_kernel_event(&event) {
+                warn!("=========================================================");
+                warn!("🚨 ANOMALY TRIGGERED: {}", trigger.advisory.incident_id);
+                warn!("Standard: {} (Control {})", trigger.rule.standard, trigger.rule.control_id);
+                warn!("MITRE Technique: {}", trigger.advisory.mitre_technique);
+                warn!("Plain English: {}", trigger.rule.plain_english_description);
+                warn!("=========================================================");
+
+                // Export Air-Gapped Investigation Dossier automatically
+                let snapshot = aggregator_clone.snapshot();
+                if let Ok((json_file, md_file)) = exporter_clone.generate_dossier(
+                    &trigger.advisory,
+                    trigger.rule,
+                    snapshot,
+                    &dossier_dir,
+                ) {
+                    info!("Forensic investigation files generated:");
+                    info!("  -> JSON: {}", json_file);
+                    info!("  -> Markdown: {}", md_file);
                 }
             }
         }
     });
 
-    // In future phases, D-Bus, journald, pipeline, and IPC servers run here
-    info!("DirtySOCS Phase 2 Verification: Press Ctrl+C to terminate cleanly.");
-    
-    // Keep main alive for demonstration or signal
+    // 4. Background Host Metrics Logger
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_secs(10));
+        loop {
+            interval.tick().await;
+            let metrics = ProcMetricsCollector::collect();
+            info!(
+                "[Proc Telemetry] CPU: {:.1}% | RSS: {} MB | Open FDs: {} | Active Procs: {}",
+                metrics.cpu_usage_percent,
+                metrics.memory_rss_bytes / (1024 * 1024),
+                metrics.fd_open_count,
+                metrics.active_processes_count
+            );
+        }
+    });
+
+    info!("DirtySOCS Phase 3 Active: Monitoring, Deduplicating & Gating.");
     tokio::signal::ctrl_c().await?;
-    info!("Exiting DirtySOCS.");
+    info!("Clean shutdown complete.");
     Ok(())
 }

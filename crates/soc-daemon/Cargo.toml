@@ -22,6 +22,7 @@ reqwest = { workspace = true }
 zbus = { workspace = true }
 sha2 = { workspace = true }
 regex = { workspace = true }
+hex = { workspace = true }
 clap = { workspace = true }
 libc = { workspace = true }
 aya = { workspace = true }
