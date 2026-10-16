@@ -181,6 +181,10 @@ The AI model is strictly barred from executing dynamic commands on the host. Whe
 | :---: | :---: |
 | <img src="docs/screenshots/advisory_export.png" alt="AI Advisory Export" width="400"/> | <img src="docs/screenshots/remediation_modal.png" alt="Remediation Confirmation" width="400"/> |
 
+| UI Concept: Dual-Lens View (Executive vs Technical) | UI Concept: Tactical MITRE ATT&CK Matrix Grid |
+| :---: | :---: |
+| <img src="docs/screenshots/ui_concept_dual_view.png" alt="Dual-Lens Incident Explorer" width="400"/> | <img src="docs/screenshots/ui_concept_mitre_heatmap.png" alt="MITRE ATT&CK Tactical Matrix" width="400"/> |
+
 ---
 
 ## Project Layout
