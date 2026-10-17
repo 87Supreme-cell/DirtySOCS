@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'theme/ubuntu_theme.dart';
 import 'ui/dashboard_view.dart';
 import 'ui/dual_lens_view.dart';
+import 'ui/landing_page_view.dart';
 import 'ui/mitre_matrix_view.dart';
 import 'ui/process_tree_view.dart';
+import 'ui/run_prompt_dialog.dart';
+import 'ui/security_hardening_view.dart';
+import 'ui/terminal_boot_view.dart';
 
 void main() {
   runApp(const DirtySocApp());
@@ -57,14 +61,61 @@ class SocHomeScreen extends StatefulWidget {
 }
 
 class _SocHomeScreenState extends State<SocHomeScreen> {
-  int _selectedNavIndex = 0;
+  int _selectedNavIndex = 0; // 0 = LANDING, 1 = DASHBOARD, 2 = DUAL-LENS, 3 = PROCESS TREE, 4 = MITRE GRID, 5 = SECURITY
+  bool _isBootingTerminal = false;
+  bool _hasPromptedOnStartup = false;
 
-  final _screens = const [
-    DashboardView(),
-    DualLensView(),
-    ProcessTreeView(),
-    MitreMatrixView(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    // Prompt the operator immediately on session start (with accidental launch double-confirmation)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_hasPromptedOnStartup && mounted) {
+        _hasPromptedOnStartup = true;
+        _showInitialRunPrompt();
+      }
+    });
+  }
+
+  void _showInitialRunPrompt() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => RunPromptDialog(
+        onAcceptedAndConfirmed: () {
+          setState(() {
+            _isBootingTerminal = true;
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _buildCurrentScreen() {
+    switch (_selectedNavIndex) {
+      case 0:
+        return LandingPageView(
+          onNavigate: (index) {
+            setState(() => _selectedNavIndex = index);
+          },
+          onStartTerminalBoot: () {
+            setState(() => _isBootingTerminal = true);
+          },
+        );
+      case 1:
+        return const DashboardView();
+      case 2:
+        return const DualLensView();
+      case 3:
+        return const ProcessTreeView();
+      case 4:
+        return const MitreMatrixView();
+      case 5:
+        return const SecurityHardeningView();
+      default:
+        return const DashboardView();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -159,11 +210,13 @@ class _SocHomeScreenState extends State<SocHomeScreen> {
                   ),
                   child: Row(
                     children: [
-                      _buildHeaderTab('DASHBOARD', 0, Icons.dashboard_outlined),
-                      _buildHeaderTab('DUAL-LENS', 1, Icons.visibility_outlined),
+                      _buildHeaderTab('LANDING', 0, Icons.home_outlined),
+                      _buildHeaderTab('DASHBOARD', 1, Icons.dashboard_outlined),
+                      _buildHeaderTab('DUAL-LENS', 2, Icons.visibility_outlined),
                       _buildHeaderTab(
-                          'PROCESS TREE', 2, Icons.account_tree_outlined),
-                      _buildHeaderTab('MITRE GRID', 3, Icons.grid_view_outlined),
+                          'PROCESS TREE', 3, Icons.account_tree_outlined),
+                      _buildHeaderTab('MITRE GRID', 4, Icons.grid_view_outlined),
+                      _buildHeaderTab('SECURITY', 5, Icons.shield_outlined),
                     ],
                   ),
                 ),
@@ -184,9 +237,31 @@ class _SocHomeScreenState extends State<SocHomeScreen> {
             ),
           ),
 
-          // Main View Content
+          // Main View Content with Dissolving Terminal Boot Overlay
           Expanded(
-            child: _screens[_selectedNavIndex],
+            child: Stack(
+              children: [
+                // Underlying active screen (shows Dashboard underneath when terminal dissolves)
+                Positioned.fill(
+                  child: _isBootingTerminal
+                      ? const DashboardView()
+                      : _buildCurrentScreen(),
+                ),
+
+                // Terminal Boot Typing Console (dissolves to dashboard upon completion)
+                if (_isBootingTerminal)
+                  Positioned.fill(
+                    child: TerminalBootView(
+                      onCompleteDissolve: () {
+                        setState(() {
+                          _isBootingTerminal = false;
+                          _selectedNavIndex = 1; // Transition to DASHBOARD
+                        });
+                      },
+                    ),
+                  ),
+              ],
+            ),
           ),
         ],
       ),
@@ -207,9 +282,14 @@ class _SocHomeScreenState extends State<SocHomeScreen> {
   Widget _buildHeaderTab(String title, int index, IconData icon) {
     final isSelected = _selectedNavIndex == index;
     return GestureDetector(
-      onTap: () => setState(() => _selectedNavIndex = index),
+      onTap: () {
+        if (_isBootingTerminal) {
+          setState(() => _isBootingTerminal = false);
+        }
+        setState(() => _selectedNavIndex = index);
+      },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected ? UbuntuTheme.ubuntuOrange : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
@@ -221,7 +301,7 @@ class _SocHomeScreenState extends State<SocHomeScreen> {
               size: 13,
               color: isSelected ? Colors.white : Colors.grey,
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 5),
             Text(
               title,
               style: TextStyle(
