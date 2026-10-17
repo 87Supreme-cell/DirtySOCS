@@ -11,8 +11,10 @@ impl ProcMetricsCollector {
         let active_procs = Self::count_active_processes();
         let uptime = Self::read_uptime();
 
+        let cpu_pct = Self::read_cpu_usage();
+
         HostSystemMetrics {
-            cpu_usage_percent: 2.4, // Baseline cgroup usage estimate
+            cpu_usage_percent: cpu_pct,
             memory_rss_bytes: rss_bytes,
             total_memory_bytes: total_mem,
             fd_open_count: open_fds,
@@ -24,6 +26,28 @@ impl ProcMetricsCollector {
                 .as_secs(),
             ring_buf_drops: crate::bpf_loader::RING_BUF_DROPS.load(std::sync::atomic::Ordering::Relaxed),
         }
+    }
+
+    fn read_cpu_usage() -> f32 {
+        if let Ok(content) = fs::read_to_string("/proc/stat") {
+            if let Some(line) = content.lines().next() {
+                let parts: Vec<u64> = line
+                    .split_whitespace()
+                    .skip(1)
+                    .filter_map(|s| s.parse().ok())
+                    .collect();
+                if parts.len() >= 4 {
+                    let idle = parts[3];
+                    let total: u64 = parts.iter().sum();
+                    if total > 0 {
+                        let busy = total.saturating_sub(idle);
+                        let pct = (busy as f32 / total as f32) * 100.0;
+                        return (pct * 10.0).round() / 10.0;
+                    }
+                }
+            }
+        }
+        2.4
     }
 
     fn read_memory() -> (u64, u64) {

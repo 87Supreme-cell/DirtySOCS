@@ -27,6 +27,12 @@ pub struct CliArgs {
 
     #[arg(long, default_value = "output/dossiers")]
     pub dossier_output_dir: PathBuf,
+
+    #[arg(long, default_value = "true")]
+    pub strict_hil: bool,
+
+    #[arg(long, default_value = "false")]
+    pub attach: bool,
 }
 
 #[tokio::main]

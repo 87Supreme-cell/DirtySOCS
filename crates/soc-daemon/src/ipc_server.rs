@@ -64,13 +64,13 @@ impl IpcServer {
         let listener = UnixListener::bind(&self.socket_path)?;
         info!("Bound Unix Domain Socket at: {:?}", self.socket_path);
 
-        // Verify and set 0600 on the newly bound socket (strict owner-only DAC)
+        // Verify and set 0666 on the newly bound socket (allows local desktop user to connect while SO_PEERCRED enforces auth)
         if let Ok(metadata) = fs::symlink_metadata(&self.socket_path) {
             if !metadata.file_type().is_symlink() {
                 let mut permissions = metadata.permissions();
-                permissions.set_mode(0o600);
+                permissions.set_mode(0o666);
                 let _ = fs::set_permissions(&self.socket_path, permissions);
-                info!("Enforced strict socket permissions 0600 on {:?}", self.socket_path);
+                info!("Enforced socket permissions 0666 on {:?}", self.socket_path);
             }
         }
 
@@ -121,9 +121,9 @@ impl IpcServer {
         if let Ok(cred) = stream.peer_cred() {
             let caller_uid = cred.uid();
             let daemon_uid = unsafe { libc::geteuid() };
-            // Permit root (UID 0) or the UID matching the daemon's runtime identity
-            if caller_uid != 0 && caller_uid != daemon_uid {
-                warn!("Blocked unauthorized IPC connection from UID: {}", caller_uid);
+            // Permit root (UID 0), the daemon's own UID, or any interactive desktop user (UID >= 1000)
+            if caller_uid != 0 && caller_uid != daemon_uid && caller_uid < 1000 {
+                warn!("Blocked unauthorized IPC connection from system UID: {}", caller_uid);
                 anyhow::bail!("Access denied: unauthorized peer UID {}", caller_uid);
             }
             info!("Authorized IPC client connection from UID: {}", caller_uid);
