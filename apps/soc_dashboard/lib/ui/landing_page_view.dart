@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../models/host_metrics.dart';
+import '../services/soc_ipc_client.dart';
 import '../theme/ubuntu_theme.dart';
 import 'run_prompt_dialog.dart';
 
@@ -316,112 +318,142 @@ class LandingPageView extends StatelessWidget {
   }
 
   Widget _buildCurrentPostureCard(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return StreamBuilder<HostTelemetry>(
+      stream: SocIpcClient().metricsStream,
+      initialData: SocIpcClient().currentTelemetry,
+      builder: (context, snapshot) {
+        final metrics = snapshot.data!;
+        final riskColor = UbuntuTheme.getGranularHealthColor(metrics.riskScore);
+        final pinAlignmentX =
+            ((metrics.riskScore.clamp(0.0, 1.0) * 2.0) - 1.0).clamp(-1.0, 1.0);
+
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.security, size: 18, color: UbuntuTheme.statusOrange),
-                const SizedBox(width: 8),
-                const Text(
-                  'CURRENT POSTURE & THREAT SPECTRUM',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                Row(
+                  children: [
+                    Icon(Icons.security, size: 18, color: riskColor),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'CURRENT POSTURE & THREAT SPECTRUM',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Granular threat level with dynamic risk spectrum',
-              style: TextStyle(fontSize: 10, color: Colors.grey),
-            ),
-            const Divider(height: 20),
+                const SizedBox(height: 4),
+                const Text(
+                  'Granular threat level with dynamic risk spectrum',
+                  style: TextStyle(fontSize: 10, color: Colors.grey),
+                ),
+                const Divider(height: 20),
 
-            // 75% Risk Box
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: UbuntuTheme.statusOrange.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: UbuntuTheme.statusOrange.withValues(alpha: 0.4)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'THREAT STATUS: 75% AT RISK',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: UbuntuTheme.statusOrange),
+                // Dynamic Risk Box
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: riskColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: riskColor.withValues(alpha: 0.4)),
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'ALERT: World-writable execution & shadow read detected.',
-                    style: TextStyle(fontSize: 10, color: Colors.orangeAccent),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Rainbow spectrum bar (Green -> Lime -> Yellow -> Orange -> Red)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: Container(
-                      height: 16,
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            UbuntuTheme.statusGreen,
-                            UbuntuTheme.statusLime,
-                            UbuntuTheme.statusYellow,
-                            UbuntuTheme.statusOrange,
-                            UbuntuTheme.statusRed,
-                          ],
-                          stops: [0.0, 0.25, 0.50, 0.75, 1.0],
-                        ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'THREAT STATUS: ${(metrics.riskScore * 100).toInt()}% AT RISK',
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: riskColor),
                       ),
-                      child: Stack(
-                        children: [
-                          // 75% indicator pin
-                          Align(
-                            alignment: const Alignment(0.5, 0),
-                            child: Container(
-                              width: 4,
-                              height: 16,
-                              color: Colors.white,
+                      const SizedBox(height: 4),
+                      Text(
+                        'STATUS: ${metrics.statusLabel}',
+                        style: TextStyle(fontSize: 10, color: riskColor),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Rainbow spectrum bar (Green -> Lime -> Yellow -> Orange -> Red)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: Container(
+                          height: 16,
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                UbuntuTheme.statusGreen,
+                                UbuntuTheme.statusLime,
+                                UbuntuTheme.statusYellow,
+                                UbuntuTheme.statusOrange,
+                                UbuntuTheme.statusRed,
+                              ],
+                              stops: [0.0, 0.25, 0.50, 0.75, 1.0],
                             ),
                           ),
+                          child: Stack(
+                            children: [
+                              // Dynamic indicator pin
+                              Align(
+                                alignment: Alignment(pinAlignmentX, 0),
+                                child: Container(
+                                  width: 4,
+                                  height: 16,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('0% NOMINAL',
+                              style: TextStyle(fontSize: 8, color: Colors.grey)),
+                          const Text('50% CAUTION',
+                              style: TextStyle(fontSize: 8, color: Colors.grey)),
+                          Text(
+                            '${(metrics.riskScore * 100).toInt()}% ACTIVE',
+                            style: TextStyle(
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                                color: riskColor),
+                          ),
+                          const Text('100% CRITICAL',
+                              style: TextStyle(fontSize: 8, color: Colors.grey)),
                         ],
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('0% NOMINAL', style: TextStyle(fontSize: 8, color: Colors.grey)),
-                      const Text('50% CAUTION', style: TextStyle(fontSize: 8, color: Colors.grey)),
-                      const Text('75% ORANGE ALERT', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: UbuntuTheme.statusOrange)),
-                      const Text('100% CRITICAL', style: TextStyle(fontSize: 8, color: Colors.grey)),
                     ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
+                ),
+                const SizedBox(height: 16),
 
-            // Host Vitals breakdown
-            const Text(
-              'HOST SYSTEM & CONTAINER VITALS',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                // Host Vitals breakdown
+                const Text(
+                  'HOST SYSTEM & CONTAINER VITALS',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                _buildVitalRow('Kernel RingBuf Drops:',
+                    '0 (Adaptive Polling Active)'),
+                _buildVitalRow('Active Host Processes:',
+                    '${metrics.activeProcs} processes monitored (/proc)'),
+                _buildVitalRow('Open IPC Descriptors:',
+                    '${metrics.openFds} FDs (Cap: 32 concurrent)'),
+                _buildVitalRow('Host Memory (RAM):',
+                    '${metrics.formattedMemUsage} (${metrics.formattedTotalGb} physical)'),
+                _buildVitalRow('CPU Utilization:',
+                    '${metrics.cpuPercent.toStringAsFixed(1)}% (procfs stat)'),
+                _buildVitalRow('Authentication Engine:',
+                    'ARGON2ID (m=64M, t=3, p=4)'),
+              ],
             ),
-            const SizedBox(height: 8),
-            _buildVitalRow('Kernel RingBuf Drops:', '0 (Adaptive Polling Active)'),
-            _buildVitalRow('Active Host Processes:', '376 processes monitored'),
-            _buildVitalRow('Open IPC Descriptors:', '77 FDs (Cap: 32 concurrent)'),
-            _buildVitalRow('Resident Set (RSS):', '28.4 MB (cgroup slice locked)'),
-            _buildVitalRow('Authentication Engine:', 'ARGON2ID (m=64M, t=3, p=4)'),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 

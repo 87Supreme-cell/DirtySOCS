@@ -33,6 +33,8 @@ class SocIpcClient {
 
   int _prevCpuTotal = 0;
   int _prevCpuIdle = 0;
+  HostTelemetry? _lastTelemetry;
+  HostTelemetry get currentTelemetry => _lastTelemetry ?? _readLocalHostProcTelemetry();
 
   static const List<String> _candidateSocketPaths = [
     '/run/dirtysocs/dirtysocs.sock',
@@ -197,6 +199,7 @@ class SocIpcClient {
         liveTelemetry = _readLocalHostProcTelemetry();
       }
 
+      _lastTelemetry = liveTelemetry;
       if (!_metricsController.isClosed) {
         _metricsController.add(liveTelemetry);
       }

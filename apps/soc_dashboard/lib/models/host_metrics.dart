@@ -22,6 +22,16 @@ class HostTelemetry {
 
   String get formattedTotalGb =>
       '${(totalMemoryBytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
+
+  String get formattedMemUsage {
+    if (memoryRssBytes >= 1024 * 1024 * 1024) {
+      final usedGb = (memoryRssBytes / (1024 * 1024 * 1024)).toStringAsFixed(1);
+      final totalGb = (totalMemoryBytes / (1024 * 1024 * 1024)).toStringAsFixed(0);
+      return '$usedGb GB / $totalGb GB';
+    } else {
+      return formattedRssMb;
+    }
+  }
 }
 
 class TrendPoint {

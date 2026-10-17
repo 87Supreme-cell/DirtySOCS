@@ -19,15 +19,7 @@ class _DashboardViewState extends State<DashboardView> {
   Widget build(BuildContext context) {
     return StreamBuilder<HostTelemetry>(
       stream: SocIpcClient().metricsStream,
-      initialData: HostTelemetry(
-        cpuPercent: 2.4,
-        memoryRssBytes: 28 * 1024 * 1024,
-        totalMemoryBytes: 16 * 1024 * 1024 * 1024,
-        openFds: 77,
-        activeProcs: 376,
-        riskScore: 0.75, // 75% at risk
-        statusLabel: '75% AT RISK (ORANGE HIGH ALERT)',
-      ),
+      initialData: SocIpcClient().currentTelemetry,
       builder: (context, metricsSnapshot) {
         final metrics = metricsSnapshot.data!;
 
@@ -59,9 +51,9 @@ class _DashboardViewState extends State<DashboardView> {
                   // 2. Host Telemetry KPI Cards
                   Row(
                     children: [
-                      Expanded(child: _buildMetricTile('CGROUP CPU', '${metrics.cpuPercent.toStringAsFixed(1)}%', 'Normal usage', Icons.speed)),
+                      Expanded(child: _buildMetricTile('CGROUP CPU', '${metrics.cpuPercent.toStringAsFixed(1)}%', 'Proc/stat sampling', Icons.speed)),
                       const SizedBox(width: 12),
-                      Expanded(child: _buildMetricTile('RESIDENT RAM', metrics.formattedRssMb, 'Bounded 1MB ringbuf', Icons.memory)),
+                      Expanded(child: _buildMetricTile('HOST RAM', metrics.formattedMemUsage, '${metrics.formattedTotalGb} physical total', Icons.memory)),
                       const SizedBox(width: 12),
                       Expanded(child: _buildMetricTile('OPEN FDS', '${metrics.openFds}', 'RAII auto-cleanup', Icons.folder_open)),
                       const SizedBox(width: 12),
