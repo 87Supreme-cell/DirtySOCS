@@ -9,23 +9,27 @@ Type=simple
 User=root
 Group=root
 
-# Binary path (adjust for deployment target)
-ExecStart=/usr/local/bin/soc-daemon --socket-path /tmp/dirtysocs.sock --dossier-output-dir /var/log/dirtysocs/dossiers
+# Binary path and runtime configuration
+ExecStart=/usr/bin/dirtysocs-daemon --socket-path /run/dirtysocs/dirtysocs.sock --strict-hil
 Restart=always
 RestartSec=3s
 
-# Kernel Capability & Security Hardening Bounds
-# Requires BPF, perfmon, tracing, and network admin capabilities
-AmbientCapabilities=CAP_BPF CAP_PERFMON CAP_NET_ADMIN CAP_SYS_PTRACE
-CapabilityBoundingSet=CAP_BPF CAP_PERFMON CAP_NET_ADMIN CAP_SYS_PTRACE
+# Runtime directory (/run/dirtysocs) automatically managed by systemd
+RuntimeDirectory=dirtysocs
+RuntimeDirectoryMode=0755
 
-# Filesystem Protections
+# Kernel Capability & Security Hardening Bounds
+# Requires BPF, perfmon, tracing, network admin, and atomic pidfd signaling
+AmbientCapabilities=CAP_BPF CAP_PERFMON CAP_NET_ADMIN CAP_SYS_PTRACE CAP_KILL
+CapabilityBoundingSet=CAP_BPF CAP_PERFMON CAP_NET_ADMIN CAP_SYS_PTRACE CAP_KILL
+
+# Filesystem Sandboxing Protections
 ProtectSystem=strict
-ReadWritePaths=/tmp /var/log/dirtysocs
+ReadWritePaths=/run/dirtysocs /var/log/dirtysocs /tmp
 ProtectHome=read-only
 PrivateTmp=false
 
-# Memory & Resource Limits (Enforces bounded footprint)
+# Memory & Resource Bounding (Zero host degradation guarantee)
 MemoryMax=64M
 MemoryHigh=48M
 CPUQuota=10%

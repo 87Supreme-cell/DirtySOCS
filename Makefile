@@ -1,4 +1,4 @@
-.PHONY: all ebpf daemon ui test run-daemon run-ui simulate-attack clean
+.PHONY: all ebpf daemon ui test run-daemon run-ui simulate-attack deb clean
 
 SHELL := /bin/bash
 CARGO := cargo
@@ -22,13 +22,18 @@ test:
 	@echo "==> Running Flutter UI Analysis..."
 	cd apps/soc_dashboard && flutter analyze
 
+## Build native Debian (.deb) package for Ubuntu / Debian
+deb:
+	@echo "==> Building Debian (.deb) package for apt installation..."
+	./scripts/build_deb.sh
+
 ## Run the daemon with simulation fallback (unprivileged)
 run-daemon:
 	cargo run --bin soc-daemon -- --simulate-kernel-if-unprivileged
 
 ## Run the daemon in live mode (requires sudo / CAP_BPF)
 run-daemon-live:
-	sudo ./target/debug/soc-daemon --socket-path /tmp/dirtysocs.sock
+	sudo ./target/debug/soc-daemon --socket-path /run/dirtysocs/dirtysocs.sock
 
 ## Run the Flutter Linux Desktop GUI
 run-ui:
@@ -41,4 +46,5 @@ simulate-attack:
 ## Clean build artifacts and test outputs
 clean:
 	cargo clean
+	rm -rf output/dirtysocs_*.deb
 	rm -rf output/dossiers/*

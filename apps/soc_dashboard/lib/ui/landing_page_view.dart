@@ -83,9 +83,33 @@ class LandingPageView extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'Select a target module to inspect, review historical log trends, or authenticate to initialize active eBPF sensors.',
-                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                Row(
+                  children: [
+                    const Text(
+                      'Select a target module to inspect, review historical log trends, or authenticate to initialize active eBPF sensors.',
+                      style: TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                    const SizedBox(width: 10),
+                    InkWell(
+                      onTap: () => _showBuilderNoteDialog(context),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: UbuntuTheme.ubuntuOrange.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: UbuntuTheme.ubuntuOrange.withValues(alpha: 0.4)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.edit_note, size: 12, color: UbuntuTheme.ubuntuOrange),
+                            SizedBox(width: 4),
+                            Text('Note from the Builder', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: UbuntuTheme.ubuntuOrange)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -408,6 +432,143 @@ class LandingPageView extends StatelessWidget {
         children: [
           SizedBox(width: 170, child: Text(k, style: const TextStyle(fontSize: 10, color: Colors.grey))),
           Expanded(child: Text(v, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold))),
+        ],
+      ),
+    );
+  }
+
+  void _showBuilderNoteDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+        title: Row(
+          children: [
+            Container(
+              width: 26,
+              height: 26,
+              decoration: const BoxDecoration(
+                color: UbuntuTheme.ubuntuOrange,
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: Text('👁', style: TextStyle(fontSize: 14)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'DirtySOCS • About & Note from the Builder',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    'Hybrid Kernel-Observability & Air-Gapped AI SOC Analyst System',
+                    style: TextStyle(fontSize: 9, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 580,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E1E1E),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF383838)),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.edit_note, color: UbuntuTheme.ubuntuOrange, size: 16),
+                        SizedBox(width: 8),
+                        Text(
+                          'A Note from the Builder',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: UbuntuTheme.ubuntuOrange,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      '"New to Linux, but I am never going back. Becasue i am still working through Debian / Ubuntu this is only available in this format, for now. I wont disrespect you all with trying to AI my way into something that would work in Flatpak or .rpm. Becasue we are all transparent, this was built with AI as I can only read code, not really write it. The languages, the design, the problem its made to solve, the security posture, standards and testing were all mine. I take pride in being a systems thinker with deep respect and just enough knowledge to work with the specialists. Thank you for checking it out, stars, donations, comments, feedback... they all go a long way. Ronin"',
+                      style: TextStyle(
+                        fontSize: 11,
+                        height: 1.5,
+                        fontStyle: FontStyle.italic,
+                        color: Color(0xFFDCDCDC),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardTheme.color,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Theme.of(context).colorScheme.outline),
+                      ),
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('📦 PACKAGING', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey)),
+                          SizedBox(height: 4),
+                          Text('Native Debian (.deb) & apt', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          Text('Install: sudo apt install ./dirtysocs.deb', style: TextStyle(fontSize: 9, color: Colors.grey)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardTheme.color,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Theme.of(context).colorScheme.outline),
+                      ),
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('⭐ SUPPORT & SPONSORSHIP', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey)),
+                          SizedBox(height: 4),
+                          Text('Star on GitHub & Donations', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          Text('github.com/87Supreme-cell/DirtySOCS', style: TextStyle(fontSize: 9, color: UbuntuTheme.ubuntuOrange)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            child: const Text('CLOSE', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            onPressed: () => Navigator.of(ctx).pop(),
+          ),
         ],
       ),
     );

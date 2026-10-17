@@ -10,6 +10,8 @@
 [![eBPF: Aya (Rust)](https://img.shields.io/badge/eBPF-Aya%20(Pure%20Rust)-orange.svg)](https://aya-rs.dev/)
 [![Compliance: CIS & NIST](https://img.shields.io/badge/Compliance-CIS%20RHEL%209%20%7C%20NIST%20SP%20800--53-green.svg)](https://www.cisecurity.org/)
 [![UI: Flutter Linux](https://img.shields.io/badge/UI-Flutter%20Desktop-02569B.svg)](https://flutter.dev)
+[![Package: .deb | apt](https://img.shields.io/badge/Package-.deb%20%7C%20apt-A81D33.svg)](#installation--packaging-deb--apt)
+[![Support: Sponsor](https://img.shields.io/badge/Sponsor-%E2%99%A5-ea4aaa.svg)](#support--donations)
 
 *A production-focused endpoint security daemon coupling read-only eBPF kernel telemetry with an air-gapped, privacy-preserving AI incident investigation pipeline and a native Flutter control plane.*
 
@@ -17,7 +19,14 @@
 
 ---
 
+## 📝 Note from the Builder
+
+> "New to Linux, but I am never going back. Becasue i am still working through Debian / Ubuntu this is only available in this format, for now. I wont disrespect you all with trying to AI my way into something that would work in Flatpak or .rpm. Becasue we are all transparent, this was built with AI as I can only read code, not really write it. The languages, the design, the problem its made to solve, the security posture, standards and testing were all mine. I take pride in being a systems thinker with deep respect and just enough knowledge to work with the specialists. Thank you for checking it out, stars, donations, comments, feedback... they all go a long way. Ronin"
+
+---
+
 ## Table of Contents
+- [Note from the Builder](#-note-from-the-builder)
 - [Executive Overview](#executive-overview)
 - [Key Architectural Guarantees](#key-architectural-guarantees)
 - [System Architecture](#system-architecture)
@@ -27,7 +36,9 @@
 - [Human-in-the-Loop Remediation Engine](#human-in-the-loop-remediation-engine)
 - [Screenshots & UI Showcase](#screenshots--ui-showcase)
 - [Project Layout](#project-layout)
-- [Quickstart & Verification](#quickstart--verification)
+- [Installation & Packaging (.deb / apt)](#installation--packaging-deb--apt)
+- [Quickstart & Verification (Developer Mode)](#quickstart--verification-developer-mode)
+- [Support & Donations](#support--donations)
 - [License](#license)
 
 ---
@@ -224,7 +235,62 @@ DirtySOCS/
 
 ---
 
-## Quickstart & Verification
+## Installation & Packaging (.deb / apt)
+
+DirtySOCS is built for native deployment on **Ubuntu and Debian** workstations and servers. Because the architecture combines a privileged Ring-0 eBPF kernel daemon (`soc-daemon`) with an unprivileged Flutter GTK control plane (`soc_dashboard`), it is distributed as a unified Debian `.deb` package managed via `apt`.
+
+### 1. Install Pre-built `.deb` Package via `apt`
+
+Once downloaded or built, install the package using `apt` (which resolves all system GTK and C runtime dependencies automatically):
+
+```bash
+sudo apt install ./output/dirtysocs_1.0.0_amd64.deb
+```
+
+During installation:
+* The eBPF kernel daemon binary is installed to `/usr/bin/dirtysocs-daemon`.
+* The Flutter GTK desktop bundle is installed to `/usr/lib/dirtysocs/`.
+* The GUI launcher wrapper is installed to `/usr/bin/dirtysocs`.
+* The systemd service unit is installed to `/lib/systemd/system/dirtysocs.service`.
+* The desktop launcher and vector icons are placed in `/usr/share/applications/dirtysocs.desktop` and `/usr/share/icons/hicolor/`.
+
+### 2. Manage the eBPF Kernel Daemon Service
+
+Enable and start the background eBPF observability daemon:
+```bash
+# Enable at system boot and start immediately
+sudo systemctl enable --now dirtysocs
+
+# Check real-time daemon status and eBPF hook health
+systemctl status dirtysocs
+
+# Stream live kernel telemetry and audit logs
+journalctl -u dirtysocs -f
+```
+
+### 3. Launch the Desktop Application
+
+Launch the desktop interface from your application menu (GNOME App Launcher / Ubuntu Dock) or via terminal:
+```bash
+dirtysocs
+```
+
+### 4. Build the `.deb` Package from Source
+
+To compile the entire codebase and assemble the `.deb` package yourself:
+```bash
+# Compile eBPF probes, Rust daemon, Flutter release bundle, and build the Debian archive
+make deb
+
+# The resulting package is generated at:
+# output/dirtysocs_1.0.0_amd64.deb
+```
+
+---
+
+## Quickstart & Verification (Developer Mode)
+
+For local development and unprivileged testing without installing the `.deb`:
 
 ### Prerequisites
 * **Linux**: Kernel 5.8+ with BTF enabled (`/sys/kernel/btf/vmlinux`).
@@ -239,10 +305,10 @@ cargo +nightly build --manifest-path crates/soc-ebpf/Cargo.toml --target bpfel-u
 ### 2. Build and Run the Userspace Daemon
 ```bash
 # Run in live mode (requires root / CAP_BPF for kernel tracepoints)
-sudo cargo run --bin soc-daemon -- --socket-path /tmp/dirtysocs.sock
+sudo cargo run --bin soc-daemon -- --socket-path /run/dirtysocs/dirtysocs.sock
 
 # Or run in simulation mode for unprivileged evaluation and testing
-cargo run --bin soc-daemon -- --socket-path /tmp/dirtysocs.sock --simulate-kernel-if-unprivileged
+cargo run --bin soc-daemon -- --socket-path /run/dirtysocs/dirtysocs.sock --simulate-kernel-if-unprivileged
 ```
 
 ### 3. Launch the Flutter SOC Dashboard
@@ -250,6 +316,21 @@ cargo run --bin soc-daemon -- --socket-path /tmp/dirtysocs.sock --simulate-kerne
 cd apps/soc_dashboard
 flutter run -d linux
 ```
+
+---
+
+## Support & Donations
+
+DirtySOCS is an open-source, community-first project. If this tool helps you secure your Linux workstations or you appreciate the transparent systems-thinking approach, your support keeps development moving forward:
+
+* **⭐ Star the Repository**: Starring [github.com/87Supreme-cell/DirtySOCS](https://github.com/87Supreme-cell/DirtySOCS) helps others discover the project.
+* **💖 Sponsorship & Donations**:
+  * [GitHub Sponsors: @87Supreme-cell](https://github.com/sponsors/87Supreme-cell)
+  * [Ko-fi / Support the Builder](https://ko-fi.com/dirtysocs)
+  * [Buy Me a Coffee](https://buymeacoffee.com/dirtysocs)
+* **💬 Feedback & Discussions**: Have an idea, found a bug, or want to contribute?
+  * Open an [Issue](https://github.com/87Supreme-cell/DirtySOCS/issues)
+  * Start a [GitHub Discussion](https://github.com/87Supreme-cell/DirtySOCS/discussions)
 
 ---
 

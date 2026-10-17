@@ -1,0 +1,22 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=DirtySOCS
+GenericName=Kernel Security & Threat Analytics
+Comment=Hybrid Kernel-Observability & Air-Gapped AI SOC Analyst System
+Exec=/usr/bin/dirtysocs
+Icon=dirtysocs
+Terminal=false
+Categories=System;Security;Monitor;Utility;
+Keywords=ebpf;security;soc;telemetry;kernel;audit;cis;nist;mitre;
+StartupWMClass=soc_dashboard
+StartupNotify=true
+Actions=NewSession;OfflineMode;
+
+[Desktop Action NewSession]
+Name=Launch Kernel Telemetry Session
+Exec=/usr/bin/dirtysocs --attach
+
+[Desktop Action OfflineMode]
+Name=Open Offline Investigation Archive
+Exec=/usr/bin/dirtysocs --offline
