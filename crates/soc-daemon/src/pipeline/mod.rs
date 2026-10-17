@@ -19,7 +19,7 @@ impl PiiScrubber {
         let salt = format!("{:x}", rand_u64());
         Self {
             home_dir_regex: Regex::new(r"/home/[a-zA-Z0-9_\-]+").unwrap(),
-            bearer_token_regex: Regex::new(r"(?i)(Bearer|token|api_key|secret)\s*[:=]\s*([a-zA-Z0-9_\-\.]{12,})").unwrap(),
+            bearer_token_regex: Regex::new(r"(?i)(Bearer|token|api_key|secret)\s*[:=\s]\s*([a-zA-Z0-9_\-\.]{12,})").unwrap(),
             private_key_regex: Regex::new(r"-----BEGIN [A-Z ]+PRIVATE KEY-----[^-]+-----END [A-Z ]+PRIVATE KEY-----").unwrap(),
             password_regex: Regex::new(r"(?i)(password|passwd|pwd)\s*[:=]\s*([^\s,;]+)").unwrap(),
             salt,

@@ -10,6 +10,7 @@ soc-common = { workspace = true }
 soc-ipc = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
+futures-util = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }
@@ -27,6 +28,10 @@ clap = { workspace = true }
 libc = { workspace = true }
 aya = { workspace = true }
 aya-log = { workspace = true }
+
+[lib]
+name = "soc_daemon"
+path = "src/lib.rs"
 
 [[bin]]
 name = "soc-daemon"

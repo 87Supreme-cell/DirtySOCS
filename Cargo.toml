@@ -24,6 +24,7 @@ hex = "0.4"
 chrono = { version = "0.4", default-features = false, features = ["serde", "clock"] }
 bytes = "1.7"
 tokio-util = { version = "0.7", features = ["codec"] }
+futures-util = { version = "0.3", default-features = false, features = ["sink"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 zbus = { version = "5.0", default-features = false, features = ["tokio"] }
 sha2 = "0.10"

@@ -1,0 +1,38 @@
+[Unit]
+Description=DirtySOCS Hybrid Kernel-Observability & AI SOC Analyst Daemon
+Documentation=https://github.com/87Supreme-cell/DirtySOCS
+After=network.target local-fs.target systemd-journald.service
+Wants=systemd-journald.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+
+# Binary path (adjust for deployment target)
+ExecStart=/usr/local/bin/soc-daemon --socket-path /tmp/dirtysocs.sock --dossier-output-dir /var/log/dirtysocs/dossiers
+Restart=always
+RestartSec=3s
+
+# Kernel Capability & Security Hardening Bounds
+# Requires BPF, perfmon, tracing, and network admin capabilities
+AmbientCapabilities=CAP_BPF CAP_PERFMON CAP_NET_ADMIN CAP_SYS_PTRACE
+CapabilityBoundingSet=CAP_BPF CAP_PERFMON CAP_NET_ADMIN CAP_SYS_PTRACE
+
+# Filesystem Protections
+ProtectSystem=strict
+ReadWritePaths=/tmp /var/log/dirtysocs
+ProtectHome=read-only
+PrivateTmp=false
+
+# Memory & Resource Limits (Enforces bounded footprint)
+MemoryMax=64M
+MemoryHigh=48M
+CPUQuota=10%
+
+# Clean shutdown signal
+KillSignal=SIGINT
+TimeoutStopSec=5s
+
+[Install]
+WantedBy=multi-user.target

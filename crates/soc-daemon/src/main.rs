@@ -1,19 +1,12 @@
-mod bpf_loader;
-mod corpus;
-mod export;
-mod heuristics;
-mod pipeline;
-mod proc_metrics;
-mod remediation;
-
-use bpf_loader::BpfEngine;
 use clap::Parser;
-use export::DossierExporter;
-use heuristics::HeuristicsGate;
-use pipeline::{PiiScrubber, SlidingWindowAggregator};
-use proc_metrics::ProcMetricsCollector;
+use soc_daemon::bpf_loader::BpfEngine;
+use soc_daemon::export::DossierExporter;
+use soc_daemon::heuristics::HeuristicsGate;
+use soc_daemon::ipc_server::{IpcServer, MitigationCardEntry};
+use soc_daemon::pipeline::{PiiScrubber, SlidingWindowAggregator};
+use soc_daemon::proc_metrics::ProcMetricsCollector;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tracing::{info, warn};
 
@@ -72,8 +65,17 @@ async fn main() -> anyhow::Result<()> {
     let aggregator = Arc::new(SlidingWindowAggregator::new(Duration::from_secs(60)));
     let heuristics = Arc::new(HeuristicsGate::new(aggregator.clone()));
     let exporter = Arc::new(DossierExporter::new());
+    let active_advisories = Arc::new(Mutex::new(Vec::<MitigationCardEntry>::new()));
 
-    // 2. Initialize eBPF Observability Layer
+    // 2. Start Framed IPC Server over Unix Domain Socket
+    let ipc_server = IpcServer::new(
+        args.socket_path.clone(),
+        aggregator.clone(),
+        active_advisories.clone(),
+    );
+    ipc_server.run().await?;
+
+    // 3. Initialize eBPF Observability Layer
     let (mut bpf_engine, mut event_rx) = BpfEngine::new();
     bpf_engine.start(args.simulate_kernel_if_unprivileged).await?;
 
@@ -82,11 +84,12 @@ async fn main() -> anyhow::Result<()> {
         bpf_engine.is_simulated()
     );
 
-    // 3. Telemetry Processing & Anomaly Gate Worker
+    // 4. Telemetry Processing & Anomaly Gate Worker
     let dossier_dir = args.dossier_output_dir.clone();
     let exporter_clone = exporter.clone();
     let aggregator_clone = aggregator.clone();
     let heuristics_clone = heuristics.clone();
+    let advisories_clone = active_advisories.clone();
 
     tokio::spawn(async move {
         while let Ok(event) = event_rx.recv().await {
@@ -97,6 +100,16 @@ async fn main() -> anyhow::Result<()> {
                 warn!("MITRE Technique: {}", trigger.advisory.mitre_technique);
                 warn!("Plain English: {}", trigger.rule.plain_english_description);
                 warn!("=========================================================");
+
+                // Store in active advisories
+                {
+                    let mut adv = advisories_clone.lock().unwrap();
+                    let target_pid = trigger.event.pid.unwrap_or(0);
+                    adv.push(MitigationCardEntry {
+                        advisory: trigger.advisory.clone(),
+                        target_pid,
+                    });
+                }
 
                 // Export Air-Gapped Investigation Dossier automatically
                 let snapshot = aggregator_clone.snapshot();
@@ -114,7 +127,7 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    // 4. Background Host Metrics Logger
+    // 5. Background Host Metrics Logger
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_secs(10));
         loop {
@@ -130,7 +143,7 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    info!("DirtySOCS Phase 3 Active: Monitoring, Deduplicating & Gating.");
+    info!("DirtySOCS Core Service Active: Socket bound, IPC online, monitoring kernel.");
     tokio::signal::ctrl_c().await?;
     info!("Clean shutdown complete.");
     Ok(())
