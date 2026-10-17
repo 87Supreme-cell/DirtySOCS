@@ -89,6 +89,18 @@ impl IpcServer {
         aggregator: Arc<SlidingWindowAggregator>,
         advisories: Arc<Mutex<Vec<MitigationCardEntry>>>,
     ) -> anyhow::Result<()> {
+        // Enforce peer authorization via SO_PEERCRED
+        if let Ok(cred) = stream.peer_cred() {
+            let caller_uid = cred.uid();
+            let daemon_uid = unsafe { libc::geteuid() };
+            // Permit root (UID 0) or the UID matching the daemon's runtime identity
+            if caller_uid != 0 && caller_uid != daemon_uid {
+                warn!("Blocked unauthorized IPC connection from UID: {}", caller_uid);
+                anyhow::bail!("Access denied: unauthorized peer UID {}", caller_uid);
+            }
+            info!("Authorized IPC client connection from UID: {}", caller_uid);
+        }
+
         let codec = create_framed_codec();
         let mut framed = Framed::new(stream, codec);
 

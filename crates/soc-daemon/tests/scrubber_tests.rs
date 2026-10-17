@@ -33,4 +33,23 @@ fn test_pii_and_token_redaction() {
     assert_eq!(hashed1, hashed2); // Consistent within node session
     assert!(hashed1.starts_with("ip-"));
     assert!(!hashed1.contains("192.168"));
+
+    // 6. AWS Key masking
+    let aws_cmd = "aws s3 cp s3://bucket/dump.tar --access-key AKIAIOSFODNN7EXAMPLE";
+    let scrubbed_aws = scrubber.scrub_text(aws_cmd);
+    assert!(scrubbed_aws.contains("[REDACTED_AWS_KEY]"));
+    assert!(!scrubbed_aws.contains("AKIAIOSFODNN7EXAMPLE"));
+
+    // 7. JWT token masking
+    let jwt_payload = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+    let scrubbed_jwt = scrubber.scrub_text(jwt_payload);
+    assert!(scrubbed_jwt.contains("[REDACTED_JWT]"));
+    assert!(!scrubbed_jwt.contains("eyJhbGciOi"));
+
+    // 8. Inline IP replacement in free-form logs
+    let raw_log = "Connection established from 10.0.4.15 to 198.51.100.22 on port 443";
+    let scrubbed_log = scrubber.scrub_text(raw_log);
+    assert!(!scrubbed_log.contains("10.0.4.15"));
+    assert!(!scrubbed_log.contains("198.51.100.22"));
+    assert!(scrubbed_log.contains("ip-"));
 }

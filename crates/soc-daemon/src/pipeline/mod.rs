@@ -8,9 +8,13 @@ use std::time::{Duration, Instant};
 /// PII & Token Scrubber enforcing deterministic data redaction before export
 pub struct PiiScrubber {
     home_dir_regex: Regex,
+    root_dir_regex: Regex,
     bearer_token_regex: Regex,
     private_key_regex: Regex,
     password_regex: Regex,
+    aws_key_regex: Regex,
+    jwt_regex: Regex,
+    ipv4_regex: Regex,
     salt: String,
 }
 
@@ -19,20 +23,30 @@ impl PiiScrubber {
         let salt = format!("{:x}", rand_u64());
         Self {
             home_dir_regex: Regex::new(r"/home/[a-zA-Z0-9_\-]+").unwrap(),
+            root_dir_regex: Regex::new(r"/(root|var/home/[a-zA-Z0-9_\-]+|Users/[a-zA-Z0-9_\-]+)").unwrap(),
             bearer_token_regex: Regex::new(r"(?i)(Bearer|token|api_key|secret)\s*[:=\s]\s*([a-zA-Z0-9_\-\.]{12,})").unwrap(),
             private_key_regex: Regex::new(r"-----BEGIN [A-Z ]+PRIVATE KEY-----[^-]+-----END [A-Z ]+PRIVATE KEY-----").unwrap(),
             password_regex: Regex::new(r"(?i)(password|passwd|pwd)\s*[:=]\s*([^\s,;]+)").unwrap(),
+            aws_key_regex: Regex::new(r"\b(AKIA|ASIA)[0-9A-Z]{16}\b").unwrap(),
+            jwt_regex: Regex::new(r"\beyJ[a-zA-Z0-9_\-]{10,}\.eyJ[a-zA-Z0-9_\-]{10,}\.[a-zA-Z0-9_\-]{10,}\b").unwrap(),
+            ipv4_regex: Regex::new(r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b").unwrap(),
             salt,
         }
     }
 
     /// Redacts file paths, command strings, and log messages
     pub fn scrub_text(&self, text: &str) -> String {
-        let step1 = self.home_dir_regex.replace_all(text, "/home/<user>");
-        let step2 = self.bearer_token_regex.replace_all(&step1, "$1=[REDACTED_TOKEN]");
-        let step3 = self.private_key_regex.replace_all(&step2, "[REDACTED_PRIVATE_KEY]");
-        let step4 = self.password_regex.replace_all(&step3, "$1=[REDACTED_SECRET]");
-        step4.into_owned()
+        let step1 = self.private_key_regex.replace_all(text, "[REDACTED_PRIVATE_KEY]");
+        let step2 = self.jwt_regex.replace_all(&step1, "[REDACTED_JWT]");
+        let step3 = self.aws_key_regex.replace_all(&step2, "[REDACTED_AWS_KEY]");
+        let step4 = self.bearer_token_regex.replace_all(&step3, "$1=[REDACTED_TOKEN]");
+        let step5 = self.password_regex.replace_all(&step4, "$1=[REDACTED_SECRET]");
+        let step6 = self.home_dir_regex.replace_all(&step5, "/home/<user>");
+        let step7 = self.root_dir_regex.replace_all(&step6, "/<user_home>");
+        let step8 = self.ipv4_regex.replace_all(&step7, |caps: &regex::Captures| {
+            self.hash_ip(&caps[0])
+        });
+        step8.into_owned()
     }
 
     /// Pseudonymizes IP addresses using salted SHA-256 to allow correlation without exposing topology

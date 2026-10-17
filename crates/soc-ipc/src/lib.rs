@@ -3,6 +3,8 @@ use thiserror::Error;
 use tokio_util::codec::LengthDelimitedCodec;
 
 pub const DEFAULT_SOCKET_PATH: &str = "/tmp/dirtysocs.sock";
+pub const SECURE_SOCKET_DIR: &str = "/run/dirtysocs";
+pub const SECURE_SOCKET_PATH: &str = "/run/dirtysocs/dirtysocs.sock";
 
 #[derive(Error, Debug)]
 pub enum IpcError {

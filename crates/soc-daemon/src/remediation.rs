@@ -107,6 +107,20 @@ impl RemediationEngine {
             };
         }
 
+        // Liveness check via signal 0 to detect if process already terminated
+        let liveness = unsafe { libc::kill(pid as i32, 0) };
+        if liveness != 0 {
+            let err = std::io::Error::last_os_error();
+            if err.raw_os_error() == Some(libc::ESRCH) {
+                return RemediationResponse {
+                    success: true,
+                    action_taken: format!("SIGNAL_0_CHECK_PID_{}", pid),
+                    details: format!("Target PID {} has already terminated (ESRCH). No signal required.", pid),
+                    timestamp_sec: current_time_sec(),
+                };
+            }
+        }
+
         let res = unsafe { libc::kill(pid as i32, signal) };
         if res == 0 {
             info!("Successfully signaled PID {} with signal {}", pid, signal);

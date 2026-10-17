@@ -137,6 +137,13 @@ impl HeuristicsGate {
             }
 
             KernelEvent::Connect(raw_conn) => {
+                let ip_str = format!(
+                    "{}.{}.{}.{}",
+                    raw_conn.dest_ip[0],
+                    raw_conn.dest_ip[1],
+                    raw_conn.dest_ip[2],
+                    raw_conn.dest_ip[3]
+                );
                 let te = TelemetryEvent {
                     subsystem: "ebpf".to_string(),
                     event_type: "sys_enter_connect".to_string(),
@@ -145,11 +152,11 @@ impl HeuristicsGate {
                     ppid: None,
                     target_interface: None,
                     target_path: None,
-                    target_network: Some(format!("Port: {}", raw_conn.port)),
+                    target_network: Some(ip_str.clone()),
                     unit: None,
                     exit_code: None,
                     count: 1,
-                    details: Some(format!("Outbound connect port: {}", raw_conn.port)),
+                    details: Some(format!("Outbound connect to {}:{}", ip_str, raw_conn.port)),
                 };
                 self.aggregator.record(te);
                 None
