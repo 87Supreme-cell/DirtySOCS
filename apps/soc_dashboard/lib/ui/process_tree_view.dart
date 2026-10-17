@@ -13,7 +13,8 @@ class ProcessTreeView extends StatelessWidget {
       _TreeNode(label: '│       └── bash (PID: 1042, UID: 1000)', detail: 'Interactive Login Shell', indent: 3, status: 'SESSION', color: Colors.grey),
       _TreeNode(label: '│           ├── curl (PID: 4819, UID: 1000)', detail: 'Fetched script via outbound HTTP', indent: 4, status: 'SUSPICIOUS', color: UbuntuTheme.statusYellow),
       _TreeNode(label: '│           ├── sh (PID: 4820, UID: 1000)', detail: 'Shell interpreter spawned script', indent: 4, status: 'SUSPICIOUS', color: UbuntuTheme.statusOrange),
-      _TreeNode(label: '│           └── .sys_update (PID: 4821, UID: 1000)', detail: 'Executing out of /tmp | Violates CIS 1.1.2', indent: 4, status: 'COMPROMISED', color: UbuntuTheme.statusRed),
+      _TreeNode(label: '│           ├── .sys_update (PID: 4821, UID: 1000)', detail: 'Executing out of /tmp | Violates CIS 1.1.2', indent: 4, status: 'COMPROMISED', color: UbuntuTheme.statusRed),
+      _TreeNode(label: '│           └── [?] orphaned_child (PID: 5120, Missing PPID)', detail: 'Orphaned / Missing Telemetry node handled cleanly without tree crash', indent: 4, status: 'ORPHANED / RECOVERED', color: UbuntuTheme.statusOrange),
       _TreeNode(label: '├── systemd-journald (PID: 340, UID: 0)', detail: 'In-Memory Journal Service', indent: 1, status: 'BENIGN', color: UbuntuTheme.statusGreen),
       _TreeNode(label: '└── dbus-daemon (PID: 610, UID: 104)', detail: 'System Message Bus Listener', indent: 1, status: 'BENIGN', color: UbuntuTheme.statusGreen),
     ];

@@ -43,15 +43,18 @@ impl DossierExporter {
     ) -> anyhow::Result<(String, String)> {
         fs::create_dir_all(output_dir)?;
 
-        // Scrub all event paths and details
+        // Scrub and sanitize all event strings (PII, XML boundaries, and code fences)
         let scrubbed_events: Vec<TelemetryEvent> = events
             .into_iter()
             .map(|mut ev| {
+                if let Some(ref p) = ev.process {
+                    ev.process = Some(sanitize_untrusted_literal(&self.scrubber.scrub_text(p)));
+                }
                 if let Some(ref p) = ev.target_path {
-                    ev.target_path = Some(self.scrubber.scrub_text(p));
+                    ev.target_path = Some(sanitize_untrusted_literal(&self.scrubber.scrub_text(p)));
                 }
                 if let Some(ref d) = ev.details {
-                    ev.details = Some(self.scrubber.scrub_text(d));
+                    ev.details = Some(sanitize_untrusted_literal(&self.scrubber.scrub_text(d)));
                 }
                 if let Some(ref net) = ev.target_network {
                     ev.target_network = Some(self.scrubber.hash_ip(net));
@@ -118,7 +121,7 @@ impl DossierExporter {
              ## 📦 Redacted Telemetry Batch\n\
              > [!NOTE] All telemetry below is enclosed in untrusted literal boundaries to prevent indirect prompt injection.\n\n\
              <untrusted_telemetry_batch>\n\
-             ````json\n{json}\n````\n\
+             `````json\n{json}\n`````\n\
              </untrusted_telemetry_batch>\n",
             id = dossier.incident_id,
             std = dossier.compliance_standard,
@@ -142,4 +145,14 @@ impl DossierExporter {
             md_path.to_string_lossy().to_string(),
         ))
     }
+}
+
+/// Strictly escapes and normalizes untrusted text to prevent prompt injection and markdown breakout
+pub fn sanitize_untrusted_literal(text: &str) -> String {
+    // 1. Homoglyph normalization for brackets/fences (e.g. U+FF1C, U+FF1E)
+    let s = text.replace('＜', "<").replace('＞', ">");
+    // 2. Strict XML-escaping for containment boundary tags
+    let s = s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
+    // 3. Escape backticks to prevent Markdown code fence breakout
+    s.replace("```", "\\`\\`\\`")
 }

@@ -9,6 +9,10 @@ use std::time::Duration;
 use tokio::sync::broadcast;
 use tracing::{info, warn};
 
+// Metrics counters for ring buffer telemetry
+pub static RING_BUF_DROPS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+pub static RING_BUF_EVENTS_PROCESSED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 // Embed the compiled eBPF ELF bytecode directly into the binary
 pub const EBPF_BYTECODE: &[u8] =
     include_bytes!("../../soc-ebpf/target/bpfel-unknown-none/release/soc-ebpf");
@@ -113,11 +117,14 @@ impl BpfEngine {
         let tx = self.event_tx.clone();
 
         tokio::task::spawn_blocking(move || {
-            info!("Kernel eBPF RingBuf consumer thread started.");
+            info!("Kernel eBPF RingBuf consumer thread started with adaptive polling.");
             let mut ring = ring_buf;
             loop {
-                // Drain ring buffer items
+                let mut drained_any = false;
+                // Drain ring buffer items at continuous microsecond speed during bursts
                 while let Some(item) = ring.next() {
+                    drained_any = true;
+                    RING_BUF_EVENTS_PROCESSED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                     let data = &*item;
                     if data.len() >= 4 {
                         let event_type = u32::from_ne_bytes([data[0], data[1], data[2], data[3]]);
@@ -139,7 +146,10 @@ impl BpfEngine {
                         }
                     }
                 }
-                std::thread::sleep(Duration::from_millis(10));
+                // Adaptive backoff: only sleep 2ms when buffer is completely empty
+                if !drained_any {
+                    std::thread::sleep(Duration::from_millis(2));
+                }
             }
         });
 

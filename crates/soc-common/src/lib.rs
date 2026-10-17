@@ -166,6 +166,8 @@ pub struct HostSystemMetrics {
     pub active_processes_count: u32,
     pub uptime_seconds: u64,
     pub timestamp_sec: u64,
+    #[serde(default)]
+    pub ring_buf_drops: u64,
 }
 
 #[cfg(feature = "std")]

@@ -42,32 +42,60 @@ impl IpcServer {
 
     /// Starts the Unix Domain Socket framed RPC server
     pub async fn run(&self) -> anyhow::Result<()> {
-        // Unlink old socket file if it exists
-        if self.socket_path.exists() {
+        // Enforce safe parent directory with 0700 permissions
+        if let Some(parent) = self.socket_path.parent() {
+            if !parent.exists() {
+                fs::create_dir_all(parent)?;
+                let mut perms = fs::metadata(parent)?.permissions();
+                perms.set_mode(0o700);
+                let _ = fs::set_permissions(parent, perms);
+                info!("Created secure IPC parent directory with mode 0700: {:?}", parent);
+            }
+        }
+
+        // Unlink old socket with symlink immunity (verify not following symlinks)
+        if let Ok(meta) = fs::symlink_metadata(&self.socket_path) {
+            if meta.file_type().is_symlink() {
+                warn!("Refusing to follow symlink at {:?}; unlinking symlink directly.", self.socket_path);
+            }
             let _ = fs::remove_file(&self.socket_path);
         }
 
         let listener = UnixListener::bind(&self.socket_path)?;
         info!("Bound Unix Domain Socket at: {:?}", self.socket_path);
 
-        // Enforce strict POSIX 0660 permissions (Owner & Authorized Group read/write only)
-        if let Ok(metadata) = fs::metadata(&self.socket_path) {
-            let mut permissions = metadata.permissions();
-            permissions.set_mode(0o660);
-            let _ = fs::set_permissions(&self.socket_path, permissions);
-            info!("Enforced socket permissions 0660 on {:?}", self.socket_path);
+        // Verify and set 0600 on the newly bound socket (strict owner-only DAC)
+        if let Ok(metadata) = fs::symlink_metadata(&self.socket_path) {
+            if !metadata.file_type().is_symlink() {
+                let mut permissions = metadata.permissions();
+                permissions.set_mode(0o600);
+                let _ = fs::set_permissions(&self.socket_path, permissions);
+                info!("Enforced strict socket permissions 0600 on {:?}", self.socket_path);
+            }
         }
 
         let aggregator = self.aggregator.clone();
         let advisories = self.active_advisories.clone();
+        // Connection concurrency limiter to prevent FD exhaustion attacks (max 32 concurrent)
+        let connection_semaphore = Arc::new(tokio::sync::Semaphore::new(32));
 
         tokio::spawn(async move {
             loop {
                 match listener.accept().await {
                     Ok((stream, _)) => {
+                        let permit = match connection_semaphore.clone().try_acquire_owned() {
+                            Ok(p) => p,
+                            Err(_) => {
+                                warn!("IPC connection rejected: maximum concurrent connection limit (32) reached.");
+                                drop(stream);
+                                continue;
+                            }
+                        };
+
                         let agg = aggregator.clone();
                         let adv = advisories.clone();
                         tokio::spawn(async move {
+                            let _permit = permit; // Held until connection closes
                             if let Err(e) = Self::handle_connection(stream, agg, adv).await {
                                 warn!("IPC client error: {}", e);
                             }
@@ -104,8 +132,16 @@ impl IpcServer {
         let codec = create_framed_codec();
         let mut framed = Framed::new(stream, codec);
 
-        while let Some(frame) = framed.next().await {
-            let bytes: BytesMut = frame?;
+        // Aggressive 3-second read timeout per frame to defeat connection starvation / slowloris attacks
+        const READ_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(3);
+
+        while let Ok(frame_opt) = tokio::time::timeout(READ_TIMEOUT, framed.next()).await {
+            let frame = match frame_opt {
+                Some(Ok(f)) => f,
+                Some(Err(e)) => anyhow::bail!("Framing codec error: {}", e),
+                None => break, // EOF reached
+            };
+            let bytes: BytesMut = frame;
             let req: JsonRpcRequest = match serde_json::from_slice(&bytes) {
                 Ok(r) => r,
                 Err(e) => {

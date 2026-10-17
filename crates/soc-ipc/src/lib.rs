@@ -77,6 +77,10 @@ pub struct RemediationRequest {
     pub target_pid: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub target_unit: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expected_comm: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expected_start_time: Option<u64>,
     pub operator_confirmation: bool,
 }
 

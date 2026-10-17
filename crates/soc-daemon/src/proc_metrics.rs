@@ -22,6 +22,7 @@ impl ProcMetricsCollector {
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs(),
+            ring_buf_drops: crate::bpf_loader::RING_BUF_DROPS.load(std::sync::atomic::Ordering::Relaxed),
         }
     }
 
